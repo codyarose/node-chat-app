@@ -4,10 +4,6 @@ let {generateMessage, generateLocationMessage} = require('./message');
 
 describe('generateMessage', () => {
 	it('should generate the correct message object', () => {
-		// store res in variable
-		// assert from matches value passed in
-		// assert text matches
-		// assert createdAt is number
 		let from = 'Name';
 		let text = 'Message body';
 		let message = generateMessage(from, text);
@@ -20,10 +16,6 @@ describe('generateMessage', () => {
 
 describe('generateLocationMessage', () => {
 	it('should generate correct location object', () => {
-		// from, lat, long
-		// expect from correct
-		// createdAt is a number
-		// url prop is what you'd expect given the input
 		let from = 'Name';
 		let latitude = 123;
 		let longitude = 456;
