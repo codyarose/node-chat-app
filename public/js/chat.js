@@ -1,5 +1,7 @@
 let socket = io();
 
+// Scrolls the page to the bottom when new messages are posted, unless
+// user has scrolled up higher than the height of a message
 function scrollToBottom() {
 	// Selectors
 	let messages = jQuery('#messages');
@@ -16,14 +18,18 @@ function scrollToBottom() {
 	}
 }
 
+// Logs when it connects to the server
 socket.on('connect', function() {
 	console.log('Connected to server');
 });
 
+// Logs when disconnected from server
 socket.on('disconnect', function() {
 	console.log('Disconnected from server');
 });
 
+// When a new message is created it is appended to the #messages container in html
+// scrollToBottom called to update user view
 socket.on('newMessage', function (message) {
 	let formattedTime = moment(message.createdAt).format('h:mm a');
 	let template = jQuery('#message-template').html();
@@ -37,6 +43,7 @@ socket.on('newMessage', function (message) {
 	scrollToBottom();
 });
 
+// Same as above but for the location messages
 socket.on('newLocationMessage', function (message) {
 	let formattedTime = moment(message.createdAt).format('h:mm a');
 	let template = jQuery('#location-message-template').html();
@@ -50,6 +57,8 @@ socket.on('newLocationMessage', function (message) {
 	scrollToBottom();
 });
 
+// Prevents the Send button refreshing entire page
+// Creates message then sets message input box back to empty
 jQuery('#message-form').on('submit', function (e) {
 	e.preventDefault();
 
@@ -63,6 +72,13 @@ jQuery('#message-form').on('submit', function (e) {
 	});
 });
 
+// Send location button
+// When clicked it uses the browser's navigator.geolacation api
+// 		to get the lat/long coords for the createLocationMessage function
+// When clicked the button is disabled and text changed, then after the
+//		geolocator runs it re-enables the button and reverts text. This is to
+// 		prevent confusion because the geolocator takes a few seconds to respond
+// 		with the results, and to prevent spamming.
 let locationButton = jQuery('#send-location');
 locationButton.on('click', function () {
 	if (!navigator.geolocation) {
