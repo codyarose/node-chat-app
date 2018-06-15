@@ -4,7 +4,7 @@ const express = require('express');
 const socketIO = require('socket.io');
 
 const {generateMessage, generateLocationMessage} = require('./utils/message');
-const {isRealString} = require('./utils/validation');
+const {isRealString, isDuplicate} = require('./utils/validation');
 const {Users} = require('./utils/users');
 
 const publicPath = path.join(__dirname, '../public');
@@ -24,20 +24,40 @@ io.on('connection', (socket) => {
 	// socket.brodcast.emit sends to everyone, except for current user
 
 	socket.on('join', (params, callback) => {
+
+		// Make room name case insensitive
+		let validRoom = params.room.toLowerCase();
+
+		// If user name already exists => reject
+		let isDuplicate = (name) => {
+			let userList = users.getUserList(validRoom);
+			let validName = name.trim();
+			if (userList.indexOf(validName) >= 0) {
+				return true;
+			}
+		};
+
 		if (!isRealString(params.name) || !isRealString(params.room)) {
 			return callback('Name and room name are required.');
-		}
+		} else if (isRealString(params.name) && isDuplicate(params.name)) {
+			return callback('That name is already taken');
+		};
 
-		socket.join(params.room);
+		// if (!isRealString(params.name) && isDuplicate(params.name)) {
+		// 	return callback('That name is already taken.');
+		// };
+
+
+		socket.join(validRoom);
 		// When a user joins:
 			// remove them from all other rooms
 		users.removeUser(socket.id);
 			// add them to the chosen room
-		users.addUser(socket.id, params.name, params.room);
+		users.addUser(socket.id, params.name, validRoom);
 			// emits the updated user list to the room
-		io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+		io.to(validRoom).emit('updateUserList', users.getUserList(validRoom));
 		socket.emit('newMessage', generateMessage('Admin', 'Welcome to the chat app'));
-		socket.broadcast.to(params.room).emit('newMessage', generateMessage('Admin', `${params.name} has joined the room`));
+		socket.broadcast.to(validRoom).emit('newMessage', generateMessage('Admin', `${params.name} has joined the room`));
 		callback();
 	});
 
@@ -76,3 +96,10 @@ io.on('connection', (socket) => {
 server.listen(port, () => {
 	console.log(`Server is up on ${port}`);
 });
+
+
+// Make chat room case insensitive, ie: lotr != LOTR != LotR
+// Make user names unique
+// Add list of currently active chatroom at login page
+	// like the People list
+	// dropdown between 'room name' and 'join' button
