@@ -2,13 +2,15 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const socketIO = require('socket.io');
+const _ = require('lodash');
 
 const {generateMessage, generateLocationMessage} = require('./utils/message');
-const {isRealString, isDuplicate} = require('./utils/validation');
+const {isRealString} = require('./utils/validation');
 const {Users} = require('./utils/users');
 
 const publicPath = path.join(__dirname, '../public');
 const port = process.env.PORT || 3000;
+
 let app = express();
 let server = http.createServer(app);
 let io = socketIO(server);
@@ -16,8 +18,16 @@ let users = new Users();
 
 app.use(express.static(publicPath));
 
+// app.get('/rooms', ( req, res ) => {
+// 	res.status(200).send(users.getRoomsList());
+// });
+
 io.on('connection', (socket) => {
 	console.log('New user connected');
+
+	socket.emit('roomList', {
+		roomList: users.getRoomList()
+	});
 
 	// socket.emit sends to single connected user
 	// io.emit sends to every connected user
@@ -31,21 +41,27 @@ io.on('connection', (socket) => {
 		// If user name already exists => reject
 		let isDuplicate = (name) => {
 			let userList = users.getUserList(validRoom);
-			let validName = name.trim();
-			if (userList.indexOf(validName) >= 0) {
-				return true;
+			let duplicates = _.filter(userList, (validName) => {
+				return _.find(validName) + 1;
+			});
+			if (duplicates.length >= 1) {
+				return callback('That name is already taken');
 			}
 		};
 
-		if (!isRealString(params.name) || !isRealString(params.room)) {
+		// Checks that the name and room name entered is valid
+		if (!isRealString(params.name) || !isRealString(params.room) && !params.activeRoom) {
 			return callback('Name and room name are required.');
-		} else if (isRealString(params.name) && isDuplicate(params.name)) {
-			return callback('That name is already taken');
+			// Checks that the name isn't already being used
 		};
 
-		// if (!isRealString(params.name) && isDuplicate(params.name)) {
-		// 	return callback('That name is already taken.');
-		// };
+		if (params.activeRoom && !isRealString(params.room)) {
+			params.room = params.activeRoom;
+		}
+
+		if (!users.isUniqueUser(params.room, params.name)) {
+			return callback('A user with the same name exists in the room.')
+		}
 
 
 		socket.join(validRoom);
@@ -98,8 +114,6 @@ server.listen(port, () => {
 });
 
 
-// Make chat room case insensitive, ie: lotr != LOTR != LotR
-// Make user names unique
 // Add list of currently active chatroom at login page
 	// like the People list
 	// dropdown between 'room name' and 'join' button
